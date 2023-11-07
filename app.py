@@ -46,7 +46,6 @@ def register():
         return jsonify({"message": "Username already exists"}), 400
     user_data[username] = {"password": password, "points": 1000}
     save_user_data()  # Save the updated user data to the file
-    render_template('register.html', title='Register')
     return jsonify({"message": "Registration successful"}), 201
 
 
