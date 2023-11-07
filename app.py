@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import json
 
 app = Flask(__name__)
@@ -25,9 +25,9 @@ def load_events_data():
     global event_data
     try:
         with open('events.json', 'r') as file:
-            events = json.load(file)
+            event_data = json.load(file)
     except FileNotFoundError:
-        events = {}
+        event_data = {}
 
 
 # Save user data to a JSON file
@@ -46,6 +46,7 @@ def register():
         return jsonify({"message": "Username already exists"}), 400
     user_data[username] = {"password": password, "points": 1000}
     save_user_data()  # Save the updated user data to the file
+    render_template('register.html', title='Register')
     return jsonify({"message": "Registration successful"}), 201
 
 
