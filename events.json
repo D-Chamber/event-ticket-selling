@@ -1,0 +1,10 @@
+{
+  "League of Legend World Cup": {
+    "tickets_available": 100,
+    "tickets_price": 50
+  },
+  "Overwatch League": {
+    "tickets_available": 100,
+    "tickets_price": 50
+  }
+}
