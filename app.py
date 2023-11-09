@@ -1,10 +1,18 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 import json
 
 app = Flask(__name__)
 
 # Initialize an empty user data dictionary
 user_data = {}
+
+# Initialize a dictionary that contains admin information
+admin_accounts = {
+    "root": {
+        "password": "rootpassword",
+        "points": 1000000,
+    }
+}
 
 # Initialize an empty ticket/event data dictionary
 event_data = {}
@@ -30,6 +38,11 @@ def load_events_data():
         event_data = {}
 
 
+def update_events_data():
+    with open('events.json', 'w') as file:
+        json.dump(event_data, file)
+
+
 # Save user data to a JSON file
 def save_user_data():
     with open('user_data.json', 'w') as file:
@@ -49,13 +62,34 @@ def register():
     return jsonify({"message": "Registration successful"}), 201
 
 
+@app.route('/buy_tickets', methods=['POST'])
+def buy_ticket():
+    data = request.get_json()
+    username = data.get("username")
+    event_id = data.get("id")
+    number_of_tickets = data.get("amount")
+    available_points = user_data[username]["points"]
+
+    if event_data[event_id]["tickets_available"] != 0:
+        available_points -= (event_data[event_id]["tickets_price"] * number_of_tickets)
+        event_data[event_id]["tickets_available"] -= number_of_tickets
+        update_events_data()
+
+    user_data[username]["points"] = available_points
+
+    return jsonify(
+        {"message": f"successfully bought {number_of_tickets} tickets", "points": user_data[username]["points"]})
+
+
 # User login
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
-    if username not in user_data or user_data[username]["password"] != password:
+    if username in admin_accounts and admin_accounts[username]["password"] == password:
+        return jsonify({"message": "Login successful, welcome Admin.", "points": admin_accounts[username]["points"]})
+    elif username not in user_data or user_data[username]["password"] != password:
         return jsonify({"message": "Invalid credentials"}), 401
     return jsonify({"message": "Login successful", "points": user_data[username]["points"]})
 

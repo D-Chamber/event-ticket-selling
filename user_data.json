@@ -1,1 +1,4 @@
-{"andrew": {"password": "password", "points": 1000}, "tim": {"password": "password", "points": 1000}}
+{
+  "james": {"password": "securedpassword", "points": 1000},
+  "tim": {"password":  "securedpassword", "points":  1000, "admin": "True"}
+}
