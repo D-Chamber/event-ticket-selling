@@ -1,21 +1,14 @@
 from flask import Flask, request, jsonify
+from loguru import logger
 import json
 
+# Ticket purchasing server V.1.0
+# Written by Tim Nguyen and Andrew Gonye
 app = Flask(__name__)
 
-# Initialize an empty user data dictionary
-user_data = {}
+user_data = []
 
-# Initialize a dictionary that contains admin information
-admin_accounts = {
-    "root": {
-        "password": "rootpassword",
-        "points": 1000000,
-    }
-}
-
-# Initialize an empty ticket/event data dictionary
-event_data = {}
+event_data = []
 
 
 # Load user data from a JSON file on server startup
@@ -23,9 +16,18 @@ def load_user_data():
     global user_data
     try:
         with open('user_data.json', 'r') as file:
-            user_data = json.load(file)
+            user_data.extend(json.load(file))
     except FileNotFoundError:
-        user_data = {}
+        logger.error("File not found")
+
+
+# Saves the user_data by opening the file and dumping the user_data into it
+def save_user_data():
+    try:
+        with open('user_data.json', 'w') as file:
+            json.dump(user_data, file)
+    except FileNotFoundError:
+        logger.error("File not found")
 
 
 # Load ticket/event data from a JSON file on server startup
@@ -35,78 +37,119 @@ def load_events_data():
         with open('events.json', 'r') as file:
             event_data = json.load(file)
     except FileNotFoundError:
-        event_data = {}
+        logger.error("File not found")
 
 
+# Function to update the event data json
 def update_events_data():
-    with open('events.json', 'w') as file:
-        json.dump(event_data, file)
+    try:
+        with open('events.json', 'w') as file:
+            json.dump(event_data, file)
+    except FileNotFoundError:
+        logger.error("File not found")
 
 
-# Save user data to a JSON file
-def save_user_data():
-    with open('user_data.json', 'w') as file:
-        json.dump(user_data, file)
-
-
-# User registration
+# User registration endpoint
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
-    if username in user_data:
-        return jsonify({"message": "Username already exists"}), 400
-    user_data[username] = {"password": password, "points": 1000}
-    save_user_data()  # Save the updated user data to the file
+    for user in user_data:
+        if user["username"] == username:
+            return jsonify({"message": "Username already exists"}), 400
+    user_data.append({"username": username, "password": password, "points": 1000, "admin": False,
+                      "tickets": [{"event_name": "League of Legends World Cup", "quantity": 0},
+                                  {"event_name": "Overwatch League", "quantity": 0}]})
+
+    save_user_data()
     return jsonify({"message": "Registration successful"}), 201
 
 
-@app.route('/buy_tickets', methods=['POST'])
-def buy_ticket():
-    data = request.get_json()
-    username = data.get("username")
-    event_id = data.get("id")
-    number_of_tickets = data.get("amount")
-    available_points = user_data[username]["points"]
-
-    if event_data[event_id]["tickets_available"] != 0:
-        available_points -= (event_data[event_id]["tickets_price"] * number_of_tickets)
-        event_data[event_id]["tickets_available"] -= number_of_tickets
-        update_events_data()
-
-    user_data[username]["points"] = available_points
-
-    return jsonify(
-        {"message": f"successfully bought {number_of_tickets} tickets", "points": user_data[username]["points"]})
-
-
-# User login
+# User login endpoint
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
-    if username in admin_accounts and admin_accounts[username]["password"] == password:
-        return jsonify({"message": "Login successful, welcome Admin.", "points": admin_accounts[username]["points"]})
-    elif username not in user_data or user_data[username]["password"] != password:
-        return jsonify({"message": "Invalid credentials"}), 401
-    return jsonify({"message": "Login successful", "points": user_data[username]["points"]})
+    for user in user_data:
+        if user["username"] == username and user["password"] == password:
+            if user["admin"]:
+                return jsonify({"message": "Login successful", "points": user["points"], "admin": True}), 200
+            return jsonify({"message": "Login successful", "points": user["points"], "admin": False}), 200
+    return jsonify({"message": "Invalid username or password"}), 401
 
 
-# Add points to a user's account
+# Buy tickets endpoint
+@app.route('/buy_tickets', methods=['POST'])
+def buy_ticket():
+    data = request.get_json()
+    username = data.get("username")
+    event_id = data.get("id")
+    number_of_tickets = data.get("quantity")
+    temp_user_info = {}
+    for user in user_data:
+        if user["username"] == username:
+            temp_user_info = user
+    available_points = temp_user_info["points"]
+
+    temp_event_data = {}
+    for event in event_data:
+        if event["id"] == event_id:
+            temp_event_data = event
+    if temp_event_data["tickets_available"] != 0:
+        available_points -= (temp_event_data["tickets_price"] * number_of_tickets)
+        temp_event_data["tickets_available"] -= number_of_tickets
+        update_events_data()
+
+    # checks event ID and updates the path of ticket being purchased accordingly
+    temp_user_info["points"] = available_points
+    if event_id == 1:
+        temp_user_info["tickets"][0] = ({"event_name": temp_event_data["event_name"],
+                                         "quantity": temp_user_info["tickets"][0]["quantity"] + number_of_tickets})
+        save_user_data()
+    elif event_id == 2:
+        temp_user_info["tickets"][1] = ({"event_name": temp_event_data["event_name"],
+                                         "quantity": temp_user_info["tickets"][1]["quantity"] + number_of_tickets})
+        save_user_data()
+
+    return jsonify({"message": f"successfully bought {number_of_tickets} tickets", "points": temp_user_info["points"]})
+
+
+# Check available tickets endpoint
+@app.route('/check_available_tickets', methods=['GET'])
+def check_available_tickets():
+    return jsonify(event_data), 200
+
+
+# Check owned tickets endpoint
+@app.route('/check_owned_tickets', methods=['POST'])
+def check_owned_tickets():
+    data = request.get_json()
+    username = data.get("username")
+    temp_user = {}
+    for user in user_data:
+        if user["username"] == username:
+            temp_user = user
+
+    return jsonify({"Tickets": temp_user["tickets"]}), 200
+
+
+# Add points endpoint
 @app.route('/add_points', methods=['POST'])
 def add_points():
     data = request.get_json()
     username = data.get("username")
     points = data.get("points")
-    if username not in user_data:
-        return jsonify({"message": "User not found"}), 404
-    user_data[username]["points"] += points
-    save_user_data()  # Save the updated user data to the file
-    return jsonify({"message": "Points added successfully", "points": user_data[username]["points"]})
+    for user in user_data:
+        if user["username"] == username:
+            user["points"] += points
+            save_user_data()
+            return jsonify({"message": "Points added successfully", "points": user["points"]}), 200
+    return jsonify({"message": "Invalid username or password"}), 401
 
 
 if __name__ == '__main__':
-    load_user_data()  # Load user data from the JSON file on server startup
+    load_user_data()
+    load_events_data()
     app.run(debug=True)

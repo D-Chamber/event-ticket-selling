@@ -16,3 +16,5 @@ starlette==0.27.0
 tqdm==4.66.1
 typing_extensions==4.8.0
 Werkzeug==3.0.1
+
+requests~=2.31.0
