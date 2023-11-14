@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from loguru import logger
 import json
 
+# Ticket purchasing server V.1.0
+# Written by Tim Nguyen and Andrew Gonye
 app = Flask(__name__)
 
 user_data = [
@@ -39,7 +41,7 @@ def load_events_data():
     except FileNotFoundError:
         logger.error("File not found")
 
-
+# Function to update the event data json
 def update_events_data():
     try:
         with open('events.json', 'w') as file:
@@ -57,7 +59,8 @@ def register():
     for user in user_data:
         if user["username"] == username:
             return jsonify({"message": "Username already exists"}), 400
-    user_data.append({"username": username, "password": password, "points": 1000, "admin": False})
+    user_data.append({"username": username, "password": password, "points": 1000, "admin": False, "tickets": [{"event_name": "League of Legends World Cup", "quantity": 0},{"event_name": "Overwatch League", "quantity": 0}]})
+
     save_user_data()
     return jsonify({"message": "Registration successful"}), 201
 
@@ -70,7 +73,9 @@ def login():
     password = data.get("password")
     for user in user_data:
         if user["username"] == username and user["password"] == password:
-            return jsonify({"message": "Login successful", "points": user["points"]}), 200
+            if user["admin"]:
+                return jsonify({"message": "Login successful", "points": user["points"], "admin": True}), 200
+            return jsonify({"message": "Login successful", "points": user["points"], "admin": False}), 200
     return jsonify({"message": "Invalid username or password"}), 401
 
 
@@ -96,10 +101,14 @@ def buy_ticket():
         temp_event_data["tickets_available"] -= number_of_tickets
         update_events_data()
 
-    #number_of_tickets+= user["tickets".__getitem__("quantity")]
+    #checks event ID and updates the path of ticket being purchased accordingly
     temp_user_info["points"] = available_points
-    temp_user_info["tickets"] = ({"event_name": temp_event_data["event_name"], "quantity": number_of_tickets})
-    save_user_data()
+    if event_id == 1:
+        temp_user_info["tickets"][0] = ({"event_name": temp_event_data["event_name"], "quantity": temp_user_info["tickets"][0]["quantity"] + number_of_tickets})
+        save_user_data()
+    elif event_id == 2:
+        temp_user_info["tickets"][1] = ({"event_name": temp_event_data["event_name"], "quantity": temp_user_info["tickets"][1]["quantity"] + number_of_tickets})
+        save_user_data()
 
     return jsonify({"message": f"successfully bought {number_of_tickets} tickets", "points": temp_user_info["points"]})
 
@@ -110,7 +119,7 @@ def check_available_tickets():
     return jsonify(event_data), 200
 
 
-
+#Check owned tickets endpoint
 @app.route('/check_owned_tickets', methods=['POST'])
 def check_owned_tickets():
     data= request.get_json()
