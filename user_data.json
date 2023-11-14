@@ -1,4 +1,1 @@
-{
-  "james": {"password": "securedpassword", "points": 1000},
-  "tim": {"password":  "securedpassword", "points":  1000, "admin": "True"}
-}
+[{"username": "admin", "password": "password", "points": 999060, "admin": true, "tickets": {"event_name": "League of Legends World Cup", "quantity": 10}}, {"username": "user", "password": "pass", "points": 950, "admin": false, "tickets": {"event_name": "League of Legends World Cup", "quantity": 1}}]
