@@ -151,7 +151,13 @@ def add_points():
     return jsonify({"message": "Invalid username or password"}), 401
 
 
-if __name__ == '__main__':
+def main():
     load_user_data()
     load_events_data()
+
+main()
+
+
+if __name__ == '__main__':
+    main()
     app.run(debug=True)
