@@ -75,7 +75,7 @@ def login():
         if user["username"] == username and user["password"] == password:
             if user["admin"]:
                 return jsonify({"message": "Login successful", "points": user["points"], "admin": True}), 200
-            return jsonify({"message": "Login successful", "points": user["points"], "admin": False}), 200
+            return jsonify({"message": "Login successful", "points": user["points"]}), 200
     return jsonify({"message": "Invalid username or password"}), 401
 
 
@@ -151,13 +151,7 @@ def add_points():
     return jsonify({"message": "Invalid username or password"}), 401
 
 
-def main():
+if __name__ == '__main__':
     load_user_data()
     load_events_data()
-
-main()
-
-
-if __name__ == '__main__':
-    main()
     app.run(debug=True)
