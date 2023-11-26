@@ -21,7 +21,7 @@ def load_user_data():
     try:
         # opens the file in read mode and extends the initial list with the json data
         with open('user_data.json', 'r') as file:
-            user_data.extend(json.load(file))
+            user_data = json.load(file)
     except FileNotFoundError:
         logger.error("File not found")
 
