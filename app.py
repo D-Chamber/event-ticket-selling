@@ -6,15 +6,20 @@ import json
 # Written by Tim Nguyen and Andrew Gonye
 app = Flask(__name__)
 
+# Initialization of the user_data list
 user_data = []
 
+# Initialization of the event_data list
 event_data = []
 
 
 # Load user data from a JSON file on server startup
 def load_user_data():
+    # Grabs the global variable of user_data to be used within this function
     global user_data
+    # Uses try-except to check if the file exists, if it does, it opens it and loads the data into user_data
     try:
+        # opens the file in read mode and extends the initial list with the json data
         with open('user_data.json', 'r') as file:
             user_data.extend(json.load(file))
     except FileNotFoundError:
@@ -32,8 +37,10 @@ def save_user_data():
 
 # Load ticket/event data from a JSON file on server startup
 def load_events_data():
+    # Grabs the global variable of event_data to be used within this function
     global event_data
     try:
+        # opens the file in read mode and sets the initial list with the json data
         with open('events.json', 'r') as file:
             event_data = json.load(file)
     except FileNotFoundError:
@@ -52,16 +59,22 @@ def update_events_data():
 # User registration endpoint
 @app.route('/register', methods=['POST'])
 def register():
+    # Uses request module to get the json data from the client when the client posts it to the server endpoint
     data = request.get_json()
+    # Parse the json data to get the username and password
     username = data.get("username")
     password = data.get("password")
+    # Checks if the username already exists in the user_data list
     for user in user_data:
         if user["username"] == username:
             return jsonify({"message": "Username already exists"}), 400
+
+    # If the username doesn't exist, it appends the username and password to the user_data list
     user_data.append({"username": username, "password": password, "points": 1000, "admin": False,
                       "tickets": [{"event_name": "League of Legends World Cup", "quantity": 0},
                                   {"event_name": "Overwatch League", "quantity": 0}]})
 
+    # Saves the user_data to the json file
     save_user_data()
     return jsonify({"message": "Registration successful"}), 201
 
@@ -69,11 +82,15 @@ def register():
 # User login endpoint
 @app.route('/login', methods=['POST'])
 def login():
+    # Uses request module to get the json data from the client when the client posts it to the server endpoint
     data = request.get_json()
+    # Parse the json data to get the username and password
     username = data.get("username")
     password = data.get("password")
+    # Checks if the username and password match the user in the user_data list
     for user in user_data:
         if user["username"] == username and user["password"] == password:
+            # If the account has the admin flag, it returns the admin flag as true
             if user["admin"]:
                 return jsonify({"message": "Login successful", "points": user["points"], "admin": True}), 200
             return jsonify({"message": "Login successful", "points": user["points"], "admin": False}), 200
@@ -83,16 +100,23 @@ def login():
 # Buy tickets endpoint
 @app.route('/buy_tickets', methods=['POST'])
 def buy_ticket():
+    # Uses request module to get the json data from the client when the client posts it to the server endpoint
     data = request.get_json()
+    # Parse the json data to get the username, event ID, and number of tickets
     username = data.get("username")
     event_id = data.get("id")
     number_of_tickets = data.get("quantity")
+
+    # Checks if the user has enough points to purchase the tickets by grabbing a reference to the user itself and
+    # setting it to temp user
     temp_user_info = {}
     for user in user_data:
         if user["username"] == username:
             temp_user_info = user
     available_points = temp_user_info["points"]
 
+    # Grabs the event data and sets it to temp event data and using that reference to see if the ticket's available are
+    # greater than 0, if it is, it subtracts the points from the user and updates the event data
     temp_event_data = {}
     for event in event_data:
         if event["id"] == event_id:
